@@ -110,7 +110,7 @@ impl Selector {
                     }
                 }
 
-                check_errors(&events)
+                Ok(())
             }
             Err(err) => Err(io_err(err)),
         }
@@ -237,16 +237,6 @@ fn is_timeout_event(event: &wasi::Event) -> bool {
     event.type_ == wasi::EVENTTYPE_CLOCK && event.userdata == TIMEOUT_TOKEN
 }
 
-/// Check all events for possible errors, it returns the first error found.
-fn check_errors(events: &[Event]) -> io::Result<()> {
-    for event in events {
-        if event.error != wasi::ERRNO_SUCCESS {
-            return Err(io_err(event.error));
-        }
-    }
-    Ok(())
-}
-
 /// Convert `wasi::Errno` into an `io::Error`.
 fn io_err(errno: wasi::Errno) -> io::Error {
     // TODO: check if this is valid.
@@ -275,11 +265,8 @@ pub(crate) mod event {
         event.type_ == wasi::EVENTTYPE_FD_WRITE
     }
 
-    pub(crate) fn is_error(_: &Event) -> bool {
-        // Not supported? It could be that `wasi::Event.error` could be used for
-        // this, but the docs say `error that occurred while processing the
-        // subscription request`, so it's checked in `Select::select` already.
-        false
+    pub(crate) fn is_error(event: &Event) -> bool {
+        event.error != wasi::ERRNO_SUCCESS
     }
 
     pub(crate) fn is_read_closed(event: &Event) -> bool {
