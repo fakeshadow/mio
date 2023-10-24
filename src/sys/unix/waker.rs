@@ -9,7 +9,8 @@
             target_os = "tvos",
             target_os = "watchos",
         )
-    ))
+    )),
+    not(target_os = "vita"),
 ))]
 mod fdbased {
     #[cfg(all(
@@ -19,6 +20,7 @@ mod fdbased {
     use crate::sys::unix::waker::eventfd::WakerInternal;
     #[cfg(any(
         mio_unsupported_force_waker_pipe,
+        target_os = "aix",
         target_os = "dragonfly",
         target_os = "illumos",
         target_os = "netbsd",
@@ -60,7 +62,8 @@ mod fdbased {
             target_os = "tvos",
             target_os = "watchos",
         )
-    ))
+    )),
+    not(target_os = "vita"),
 ))]
 pub use self::fdbased::Waker;
 
@@ -198,13 +201,16 @@ pub use self::kqueue::Waker;
 
 #[cfg(any(
     mio_unsupported_force_waker_pipe,
+    target_os = "aix",
     target_os = "dragonfly",
     target_os = "illumos",
     target_os = "netbsd",
     target_os = "openbsd",
     target_os = "redox",
+    target_os = "vita",
 ))]
 mod pipe {
+    use crate::sys::unix::pipe;
     use std::fs::File;
     use std::io::{self, Read, Write};
     use std::os::unix::io::{AsRawFd, FromRawFd, RawFd};
@@ -221,11 +227,9 @@ mod pipe {
 
     impl WakerInternal {
         pub fn new() -> io::Result<WakerInternal> {
-            let mut fds = [-1; 2];
-            syscall!(pipe2(fds.as_mut_ptr(), libc::O_NONBLOCK | libc::O_CLOEXEC))?;
-            let sender = unsafe { File::from_raw_fd(fds[1]) };
-            let receiver = unsafe { File::from_raw_fd(fds[0]) };
-
+            let [receiver, sender] = pipe::new_raw()?;
+            let sender = unsafe { File::from_raw_fd(sender) };
+            let receiver = unsafe { File::from_raw_fd(receiver) };
             Ok(WakerInternal { sender, receiver })
         }
 
@@ -249,7 +253,7 @@ mod pipe {
             }
         }
 
-        #[cfg(mio_unsupported_force_poll_poll)]
+        #[cfg(any(mio_unsupported_force_poll_poll, target_os = "vita"))]
         pub fn ack_and_reset(&self) {
             self.empty();
         }
@@ -274,20 +278,24 @@ mod pipe {
     }
 }
 
-#[cfg(all(
-    mio_unsupported_force_poll_poll,
-    any(
-        mio_unsupported_force_waker_pipe,
-        target_os = "dragonfly",
-        target_os = "illumos",
-        target_os = "netbsd",
-        target_os = "openbsd",
-        target_os = "redox",
-    )
+#[cfg(any(
+    all(
+        mio_unsupported_force_poll_poll,
+        any(
+            mio_unsupported_force_waker_pipe,
+            target_os = "aix",
+            target_os = "dragonfly",
+            target_os = "illumos",
+            target_os = "netbsd",
+            target_os = "openbsd",
+            target_os = "redox",
+        )
+    ),
+    target_os = "vita",
 ))]
 pub(crate) use self::pipe::WakerInternal;
 
-#[cfg(mio_unsupported_force_poll_poll)]
+#[cfg(any(mio_unsupported_force_poll_poll, target_os = "vita"))]
 mod poll {
     use crate::sys::Selector;
     use crate::Token;
@@ -313,5 +321,5 @@ mod poll {
     }
 }
 
-#[cfg(mio_unsupported_force_poll_poll)]
+#[cfg(any(mio_unsupported_force_poll_poll, target_os = "vita"))]
 pub use self::poll::Waker;

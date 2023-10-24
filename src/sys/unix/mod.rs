@@ -34,7 +34,7 @@ cfg_os_poll! {
 
     cfg_io_source! {
         // Both `kqueue` and `epoll` don't need to hold any user space state.
-        #[cfg(not(mio_unsupported_force_poll_poll))]
+        #[cfg(not(any(mio_unsupported_force_poll_poll, target_os = "vita")))]
         mod stateless_io_source {
             use std::io;
             use std::os::unix::io::RawFd;
@@ -87,16 +87,27 @@ cfg_os_poll! {
             }
         }
 
-        #[cfg(not(mio_unsupported_force_poll_poll))]
+        #[cfg(not(any(mio_unsupported_force_poll_poll, target_os = "vita")))]
         pub(crate) use self::stateless_io_source::IoSourceState;
 
-        #[cfg(mio_unsupported_force_poll_poll)]
+        #[cfg(any(mio_unsupported_force_poll_poll, target_os = "vita"))]
         pub(crate) use self::selector::IoSourceState;
     }
 
-    cfg_os_ext! {
-        pub(crate) mod pipe;
-    }
+    #[cfg(any(
+        // For the public `pipe` module, must match `cfg_os_ext` macro.
+        feature = "os-ext",
+        // For the `Waker` type based on a pipe.
+        mio_unsupported_force_waker_pipe,
+        target_os = "aix",
+        target_os = "dragonfly",
+        target_os = "illumos",
+        target_os = "netbsd",
+        target_os = "openbsd",
+        target_os = "redox",
+        target_os = "vita",
+    ))]
+    pub(crate) mod pipe;
 }
 
 cfg_not_os_poll! {
