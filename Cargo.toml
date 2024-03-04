@@ -1,10 +1,12 @@
 [package]
-edition = "2018"
+edition = "2021"
+rust-version = "1.74"
 name = "mio"
 # When releasing to crates.io:
 # - Update CHANGELOG.md.
 # - Create git tag
-version       = "0.8.9"
+version       = "1.0.0"
+publish       = false # In development.
 license       = "MIT"
 authors       = [
   "Carl Lerche <me@carllerche.com>",
@@ -49,8 +51,11 @@ log = { version = "0.4.8", optional = true }
 libc = "0.2.149"
 
 [target.'cfg(windows)'.dependencies.windows-sys]
-version = "0.48"
+version = "0.52"
 features = [
+  "Wdk_Foundation",                   # Required for AFD.
+  "Wdk_Storage_FileSystem",           # Required for AFD.
+  "Wdk_System_IO",                    # Required for AFD.
   "Win32_Foundation",                 # Basic types eg HANDLE
   "Win32_Networking_WinSock",         # winsock2 types/functions
   "Win32_Storage_FileSystem",         # Enables NtCreateFile
@@ -74,6 +79,7 @@ targets = [
   "aarch64-linux-android",
   "wasm32-wasi",
   "x86_64-apple-darwin",
+  "x86_64-pc-windows-gnu",
   "x86_64-pc-windows-msvc",
   "x86_64-unknown-dragonfly",
   "x86_64-unknown-freebsd",
