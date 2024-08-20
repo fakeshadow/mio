@@ -571,7 +571,9 @@ fn connect_error() {
 
         for event in &events {
             if event.token() == Token(0) {
-                assert!(event.is_writable());
+                // With fastopen we would be able to write
+                // Without fastopen we would be getting the connection error
+                assert!(event.is_writable() || event.is_error());
                 // Solaris poll(2) says POLLHUP and POLLOUT are mutually exclusive.
                 #[cfg(not(target_os = "solaris"))]
                 assert!(event.is_write_closed());
@@ -701,8 +703,12 @@ fn write_shutdown() {
     // Now, shutdown the write half of the socket.
     socket.shutdown(Shutdown::Write).unwrap();
 
-    // POLLRDHUP isn't supported on Solaris
-    if cfg!(target_os = "solaris") {
+    // POLLRDHUP isn't supported on Solaris,
+    if cfg!(any(
+        target_os = "hurd",
+        target_os = "solaris",
+        target_os = "nto"
+    )) {
         wait!(poll, is_readable, false);
     } else {
         wait!(poll, is_readable, true);
